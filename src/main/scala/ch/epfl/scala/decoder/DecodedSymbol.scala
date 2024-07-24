@@ -146,6 +146,7 @@ object DecodedMethod:
     override def owner: DecodedClass = target.owner
     override def declaredType: TypeOrMethodic = target.declaredType
     override def symbolOpt: Option[TermSymbol] = target.symbolOpt
+    override def treeOpt: Option[Tree] = target.treeOpt
     override def toString: String = s"AdaptedFun($target)"
 
   final class SAMOrPartialFunctionConstructor(val owner: DecodedClass, val declaredType: Type) extends DecodedMethod:
@@ -160,3 +161,59 @@ object DecodedMethod:
     override def toString: String =
       if underlying.isInstanceOf[InlinedMethod] then underlying.toString
       else s"$underlying (inlined)"
+
+sealed trait DecodedField extends DecodedSymbol:
+  def owner: DecodedClass
+  override def symbolOpt: Option[TermSymbol] = None
+  def declaredType: TypeOrMethodic
+
+object DecodedField:
+  final class ValDef(val owner: DecodedClass, val symbol: TermSymbol) extends DecodedField:
+    def declaredType: TypeOrMethodic = symbol.declaredType
+    override def symbolOpt: Option[TermSymbol] = Some(symbol)
+    override def toString: String = s"ValDef($owner, ${symbol.showBasic})"
+
+  final class ModuleVal(val owner: DecodedClass, val symbol: TermSymbol) extends DecodedField:
+    def declaredType: TypeOrMethodic = symbol.declaredType
+    override def symbolOpt: Option[TermSymbol] = Some(symbol)
+    override def toString: String = s"ModuleVal($owner, ${symbol.showBasic})"
+
+  final class LazyValOffset(val owner: DecodedClass, val index: Int, val declaredType: Type) extends DecodedField:
+    override def toString: String = s"LazyValOffset($owner, $index)"
+
+  final class Outer(val owner: DecodedClass, val declaredType: Type) extends DecodedField:
+    override def toString: String = s"Outer($owner, ${declaredType.showBasic})"
+
+  final class SerialVersionUID(val owner: DecodedClass, val declaredType: Type) extends DecodedField:
+    override def toString: String = s"SerialVersionUID($owner)"
+
+  final class Capture(val owner: DecodedClass, val symbol: TermSymbol) extends DecodedField:
+    def declaredType: TypeOrMethodic = symbol.declaredType
+    override def toString: String = s"Capture($owner, ${symbol.showBasic})"
+
+  final class LazyValBitmap(val owner: DecodedClass, val declaredType: Type, val name: String) extends DecodedField:
+    override def toString: String = s"LazyValBitmap($owner, ${declaredType.showBasic})"
+
+sealed trait DecodedVariable extends DecodedSymbol:
+  def owner: DecodedMethod
+  override def symbolOpt: Option[TermSymbol] = None
+  def declaredType: TypeOrMethodic
+
+object DecodedVariable:
+  final class ValDef(val owner: DecodedMethod, val symbol: TermSymbol) extends DecodedVariable:
+    def declaredType: TypeOrMethodic = symbol.declaredType
+    override def symbolOpt: Option[TermSymbol] = Some(symbol)
+    override def toString: String = s"LocalVariable($owner, ${symbol.showBasic})"
+
+  final class CapturedVariable(val owner: DecodedMethod, val symbol: TermSymbol) extends DecodedVariable:
+    def declaredType: TypeOrMethodic = symbol.declaredType
+    override def symbolOpt: Option[TermSymbol] = Some(symbol)
+    override def toString: String = s"VariableCapture($owner, ${symbol.showBasic})"
+
+  final class This(val owner: DecodedMethod, val declaredType: Type) extends DecodedVariable:
+    override def toString: String = s"This($owner, ${declaredType.showBasic})"
+
+  final class AnyValThis(val owner: DecodedMethod, val symbol: TermSymbol) extends DecodedVariable:
+    def declaredType: TypeOrMethodic = symbol.declaredType
+    override def symbolOpt: Option[TermSymbol] = Some(symbol)
+    override def toString: String = s"AnyValThis($owner, ${declaredType.showBasic})"

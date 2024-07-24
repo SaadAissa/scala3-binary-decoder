@@ -20,7 +20,7 @@ class JdiClass(ref: com.sun.jdi.ReferenceType) extends JdiType(ref) with ClassTy
 
   override def isInterface = ref.isInstanceOf[com.sun.jdi.InterfaceType]
 
-  override def sourceLines: Option[SourceLines] = Some(SourceLines(sourceName, allLineLocations.map(_.lineNumber)))
+  override def sourceLines: Option[SourceLines] = sourceName.map(SourceLines(_, allLineLocations.map(_.lineNumber)))
 
   override def method(name: String, sig: String): Option[Method] =
     visibleMethods.find(_.signedName == SignedName(name, sig))
@@ -32,12 +32,14 @@ class JdiClass(ref: com.sun.jdi.ReferenceType) extends JdiType(ref) with ClassTy
 
   override def declaredField(name: String): Option[Field] = None
 
+  override def declaredFields: Seq[Field] = Seq.empty
+
   private[jdi] def constantPool: ConstantPool = ConstantPool(ref.constantPool)
 
   private def allLineLocations: Seq[com.sun.jdi.Location] =
     try ref.allLineLocations.asScala.toSeq
     catch case e: com.sun.jdi.AbsentInformationException => Seq.empty
 
-  private[jdi] def sourceName: String = ref.sourceName
+  override def sourceName: Option[String] = Option(ref.sourceName)
 
   private def visibleMethods: Seq[JdiMethod] = ref.visibleMethods.asScala.map(JdiMethod(_)).toSeq

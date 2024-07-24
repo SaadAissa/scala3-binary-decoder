@@ -135,6 +135,74 @@ object Patterns:
           "(.+)\\$i\\d+".r.unapplySeq(xs(0)).map(_(0)).getOrElse(xs(0))
         }
 
+  object LazyVal:
+    def unapply(field: binary.Field): Option[String] = unapply(field.decodedName)
+
+    def unapply(name: String): Option[String] =
+      """(.*)\$lzy\d+""".r.unapplySeq(name).map(xs => xs(0).stripSuffix("$"))
+
+  object Module:
+    def unapply(field: binary.Field): Boolean = field.name == "MODULE$"
+
+  object Offset:
+    def unapply(field: binary.Field): Option[Int] =
+      """OFFSET\$(?:_m_)?(\d+)""".r.unapplySeq(field.name).map(xs => xs(0).toInt)
+
+  object OuterField:
+    def unapply(field: binary.Field): Boolean = field.name == "$outer"
+
+  object SerialVersionUID:
+    def unapply(field: binary.Field): Boolean = field.name == "serialVersionUID"
+
+  object AnyValCapture:
+    def unapply(field: binary.Field): Boolean =
+      field.name.matches("\\$this\\$\\d+")
+
+  object Capture:
+    def unapply(field: binary.Field): Option[Seq[String]] =
+      field.extractFromDecodedNames("(.+)\\$\\d+".r)(xs => xs(0))
+
+  object LazyValBitmap:
+    def unapply(field: binary.Field): Option[String] =
+      "(.+)bitmap\\$\\d+".r.unapplySeq(field.decodedName).map(xs => xs(0))
+
+  object CapturedLzyVariable:
+    def unapply(variable: binary.Variable): Option[String] =
+      "(.+)\\$lzy1\\$\\d+".r.unapplySeq(variable.name).map(xs => xs(0))
+
+  object CapturedVariable:
+    def unapply(variable: binary.Variable): Option[String] =
+      "(.+)\\$\\d+".r.unapplySeq(variable.name).map(xs => xs(0))
+
+  object CapturedTailLocalVariable:
+    def unapply(variable: binary.Variable): Option[String] =
+      "(.+)\\$tailLocal\\d+(\\$\\d+)?".r.unapplySeq(variable.name).map(xs => xs(0))
+
+  object This:
+    def unapply(variable: binary.Variable): Boolean = variable.name == "this"
+
+  object DollarThis:
+    def unapply(variable: binary.Variable): Boolean = variable.name == "$this"
+
+  object LazyValVariable:
+    def unapply(variable: binary.Variable): Option[String] =
+      "(.+)\\$\\d+\\$lzyVal".r.unapplySeq(variable.name).map(xs => xs(0))
+
+  object Proxy:
+    def unapply(variable: binary.Variable): Option[String] =
+      "(.+)\\$proxy\\d+".r.unapplySeq(variable.name).map(xs => xs(0))
+
+  object InlinedThis:
+    def unapply(variable: binary.Variable): Boolean = variable.name.endsWith("_this")
+
+  extension (field: binary.Field)
+    private def extractFromDecodedNames[T](regex: Regex)(extract: List[String] => T): Option[Seq[T]] =
+      val extracted = field.unexpandedDecodedNames
+        .flatMap(regex.unapplySeq)
+        .map(extract)
+        .distinct
+      if extracted.nonEmpty then Some(extracted) else None
+
   extension (method: binary.Method)
     private def extractFromDecodedNames[T](regex: Regex)(extract: List[String] => T): Option[Seq[T]] =
       val extracted = method.unexpandedDecodedNames
